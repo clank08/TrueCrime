@@ -13,41 +13,18 @@ export default function ContentDetailScreen() {
   const params = useLocalSearchParams();
   const contentId = typeof params.id === 'string' ? params.id : '';
 
-  const backgroundColor = useThemeColor({}, 'background');
-  const textColor = useThemeColor({}, 'text');
+  const backgroundColor = useThemeColor({ light: '#FFFFFF', dark: '#0A0A0B' }, 'background');
+  const textColor = useThemeColor({ light: '#111827', dark: '#FFFFFF' }, 'text');
+  const borderColor = useThemeColor({ light: '#E5E7EB', dark: '#3A3A3F' }, 'border');
 
-  // For now, use search to get content details since getExternalContent needs more work
-  // Extract the title from the ID if possible, or use a general search
-  const searchTerm = contentId.includes('watchmode_') ? 'bundy' : contentId;
-  
-  const searchQuery = trpc.content.search.useQuery(
-    { 
-      query: searchTerm,
-      page: 1,
-      limit: 50
-    },
+  // Use the proper getExternalContent endpoint for external content
+  const contentQuery = trpc.content.getExternalContent.useQuery(
+    { externalId: contentId },
     { 
       enabled: !!contentId,
       retry: 2,
     }
   );
-
-  // Memoize the content finding logic to prevent infinite re-renders
-  const foundContent = useMemo(() => {
-    if (!searchQuery.data?.results) return null;
-    return searchQuery.data.results.find(item => 
-      item.id === contentId || 
-      item.watchmodeId?.toString() === contentId.replace('watchmode_', '')
-    );
-  }, [searchQuery.data?.results, contentId]);
-
-  // Create stable contentQuery object
-  const contentQuery = useMemo(() => ({
-    data: foundContent,
-    isLoading: searchQuery.isLoading,
-    error: searchQuery.error || (!searchQuery.isLoading && !foundContent ? { message: 'Content not found in search results' } : null),
-    refetch: searchQuery.refetch
-  }), [foundContent, searchQuery.isLoading, searchQuery.error, searchQuery.refetch]);
 
   const handleGoBack = () => {
     if (router.canGoBack()) {
@@ -63,17 +40,34 @@ export default function ContentDetailScreen() {
       <ThemedView style={{ backgroundColor, flex: 1 }}>
         {/* Header with back button */}
         <View 
-          className="flex-row items-center p-4 border-b border-gray-200"
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            padding: 16,
+            borderBottomWidth: 1,
+            borderBottomColor: borderColor,
+          }}
           style={{ paddingTop: Platform.OS === 'ios' ? 56 : 16 }}
         >
           <Pressable
             onPress={handleGoBack}
-            className="mr-3 p-2"
+            style={{
+              marginRight: 12,
+              padding: 8,
+              borderRadius: 8,
+            }}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
           >
             <Ionicons name="arrow-back" size={24} color={textColor} />
           </Pressable>
-          <ThemedText className="text-lg font-semibold" style={{ color: textColor }}>
+          <ThemedText style={{
+            fontSize: 18,
+            fontWeight: '600',
+            color: textColor,
+            letterSpacing: -0.02,
+          }}>
             Content Details
           </ThemedText>
         </View>
@@ -95,17 +89,34 @@ export default function ContentDetailScreen() {
       <ThemedView style={{ backgroundColor, flex: 1 }}>
         {/* Header with back button */}
         <View 
-          className="flex-row items-center p-4 border-b border-gray-200"
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            padding: 16,
+            borderBottomWidth: 1,
+            borderBottomColor: borderColor,
+          }}
           style={{ paddingTop: Platform.OS === 'ios' ? 56 : 16 }}
         >
           <Pressable
             onPress={handleGoBack}
-            className="mr-3 p-2"
+            style={{
+              marginRight: 12,
+              padding: 8,
+              borderRadius: 8,
+            }}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
           >
             <Ionicons name="arrow-back" size={24} color={textColor} />
           </Pressable>
-          <ThemedText className="text-lg font-semibold" style={{ color: textColor }}>
+          <ThemedText style={{
+            fontSize: 18,
+            fontWeight: '600',
+            color: textColor,
+            letterSpacing: -0.02,
+          }}>
             Content Details
           </ThemedText>
         </View>
@@ -123,9 +134,20 @@ export default function ContentDetailScreen() {
           </ThemedText>
           <Pressable
             onPress={() => contentQuery.refetch()}
-            className="bg-primary px-6 py-3 rounded-lg"
+            style={{
+              backgroundColor: '#BA0C2F',
+              paddingHorizontal: 24,
+              paddingVertical: 12,
+              borderRadius: 8,
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Try again to load content"
           >
-            <ThemedText className="text-white font-semibold">
+            <ThemedText style={{
+              color: '#FFFFFF',
+              fontWeight: '600',
+              fontSize: 16,
+            }}>
               Try Again
             </ThemedText>
           </Pressable>
@@ -140,17 +162,34 @@ export default function ContentDetailScreen() {
       <ThemedView style={{ backgroundColor, flex: 1 }}>
         {/* Header with back button */}
         <View 
-          className="flex-row items-center p-4 border-b border-gray-200"
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            padding: 16,
+            borderBottomWidth: 1,
+            borderBottomColor: borderColor,
+          }}
           style={{ paddingTop: Platform.OS === 'ios' ? 56 : 16 }}
         >
           <Pressable
             onPress={handleGoBack}
-            className="mr-3 p-2"
+            style={{
+              marginRight: 12,
+              padding: 8,
+              borderRadius: 8,
+            }}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
           >
             <Ionicons name="arrow-back" size={24} color={textColor} />
           </Pressable>
-          <ThemedText className="text-lg font-semibold" style={{ color: textColor }}>
+          <ThemedText style={{
+            fontSize: 18,
+            fontWeight: '600',
+            color: textColor,
+            letterSpacing: -0.02,
+          }}>
             Content Details
           </ThemedText>
         </View>
@@ -168,9 +207,20 @@ export default function ContentDetailScreen() {
           </ThemedText>
           <Pressable
             onPress={handleGoBack}
-            className="bg-primary px-6 py-3 rounded-lg"
+            style={{
+              backgroundColor: '#BA0C2F',
+              paddingHorizontal: 24,
+              paddingVertical: 12,
+              borderRadius: 8,
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Try again to load content"
           >
-            <ThemedText className="text-white font-semibold">
+            <ThemedText style={{
+              color: '#FFFFFF',
+              fontWeight: '600',
+              fontSize: 16,
+            }}>
               Go Back
             </ThemedText>
           </Pressable>
@@ -184,9 +234,18 @@ export default function ContentDetailScreen() {
     <ThemedView style={{ backgroundColor, flex: 1 }}>
       {/* Header with back button */}
       <View 
-        className="flex-row items-center p-4 border-b border-gray-200 absolute top-0 left-0 right-0 z-50"
-        style={{ 
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          padding: 16,
           paddingTop: Platform.OS === 'ios' ? 56 : 16,
+          borderBottomWidth: 1,
+          borderBottomColor: borderColor,
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 50,
           backgroundColor: backgroundColor + 'F0', // Semi-transparent background
         }}
       >
@@ -197,7 +256,16 @@ export default function ContentDetailScreen() {
         >
           <Ionicons name="arrow-back" size={24} color={textColor} />
         </Pressable>
-        <ThemedText className="text-lg font-semibold flex-1" style={{ color: textColor }}>
+        <ThemedText 
+          style={{
+            fontSize: 18,
+            fontWeight: '600',
+            color: textColor,
+            flex: 1,
+            letterSpacing: -0.02,
+          }}
+          numberOfLines={1}
+        >
           {contentQuery.data.title}
         </ThemedText>
       </View>

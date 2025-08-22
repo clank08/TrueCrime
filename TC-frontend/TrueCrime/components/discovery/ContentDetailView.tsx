@@ -8,6 +8,7 @@ import {
   Alert,
   Platform,
   Share,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -19,6 +20,8 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useContentTracking } from '@/hooks/useContentTracking';
 import type { Content, AvailabilityType } from '@/types/api';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 interface ContentDetailViewProps {
   content: Content;
@@ -45,17 +48,17 @@ function PlatformButton({ platform, onPress }: PlatformButtonProps) {
   const getAvailabilityColor = (type: AvailabilityType): string => {
     switch (type) {
       case 'FREE':
-        return '#4CAF50';
+        return '#10B981'; // Success green from design system
       case 'SUBSCRIPTION':
-        return '#2196F3';
+        return '#00338D'; // Evidence blue from design system
       case 'PREMIUM_SUBSCRIPTION':
-        return '#9C27B0';
+        return '#4A1850'; // Midnight purple from design system
       case 'PURCHASE':
-        return '#FF9800';
+        return '#F59E0B'; // Warning amber from design system
       case 'RENTAL':
-        return '#FF5722';
+        return '#BA0C2F'; // Crime red from design system
       default:
-        return '#757575';
+        return '#71797E'; // Steel gray from design system
     }
   };
 
@@ -96,21 +99,37 @@ function PlatformButton({ platform, onPress }: PlatformButtonProps) {
   return (
     <Pressable
       onPress={onPress}
-      className="flex-row items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm"
-      style={{
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
-        borderWidth: 1,
-        borderColor: 'rgba(139, 75, 127, 0.1)',
-      }}
+      style={[
+        {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: 16,
+          backgroundColor: cardBg,
+          borderRadius: 12,
+          marginBottom: 8,
+          borderWidth: 1,
+          borderColor: borderColor,
+          shadowColor: getAvailabilityColor(platform.availabilityType),
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.15,
+          shadowRadius: 8,
+          elevation: 3,
+        }
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={`Watch on ${platform.name}, ${getAvailabilityLabel(platform.availabilityType)}`}
+      accessibilityHint="Double tap to open streaming platform"
     >
       <View className="flex-row items-center flex-1">
         <View 
-          className="w-12 h-12 rounded-xl items-center justify-center mr-4"
-          style={{ 
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: 12,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 16,
             backgroundColor: getAvailabilityColor(platform.availabilityType),
             shadowColor: getAvailabilityColor(platform.availabilityType),
             shadowOffset: { width: 0, height: 2 },
@@ -119,33 +138,59 @@ function PlatformButton({ platform, onPress }: PlatformButtonProps) {
             elevation: 3,
           }}
         >
-          <Ionicons name={getAvailabilityIcon(platform.availabilityType)} size={22} color="#FFFFFF" />
+          <Ionicons name={getAvailabilityIcon(platform.availabilityType)} size={24} color="#FFFFFF" />
         </View>
-        <View className="flex-1">
-          <ThemedText className="font-bold text-base mb-1">
+        <View style={{ flex: 1 }}>
+          <ThemedText style={{ 
+            fontSize: 16, 
+            fontWeight: '600', 
+            color: textColor,
+            marginBottom: 4,
+            letterSpacing: -0.02,
+          }}>
             {platform.name}
           </ThemedText>
-          <ThemedText className="text-sm" style={{ color: getAvailabilityColor(platform.availabilityType) }}>
+          <ThemedText style={{ 
+            fontSize: 14, 
+            fontWeight: '500',
+            color: getAvailabilityColor(platform.availabilityType) 
+          }}>
             {getAvailabilityLabel(platform.availabilityType)}
           </ThemedText>
         </View>
       </View>
       
-      <View className="flex-row items-center">
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <View 
-          className="px-3 py-1 rounded-full mr-3"
-          style={{ backgroundColor: `${getAvailabilityColor(platform.availabilityType)}20` }}
+          style={{
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            borderRadius: 20,
+            marginRight: 12,
+            backgroundColor: `${getAvailabilityColor(platform.availabilityType)}20`,
+          }}
         >
           <ThemedText 
-            className="text-xs font-bold uppercase tracking-wider"
-            style={{ color: getAvailabilityColor(platform.availabilityType) }}
+            style={{
+              fontSize: 12,
+              fontWeight: '700',
+              color: getAvailabilityColor(platform.availabilityType),
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+            }}
           >
             {getAvailabilityLabel(platform.availabilityType)}
           </ThemedText>
         </View>
         <View 
-          className="w-8 h-8 rounded-full items-center justify-center"
-          style={{ backgroundColor: 'rgba(139, 75, 127, 0.1)' }}
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'rgba(139, 75, 127, 0.1)',
+          }}
         >
           <Ionicons name="chevron-forward" size={16} color="#8B4B7F" />
         </View>
@@ -168,9 +213,11 @@ export function ContentDetailView({
     return null;
   }
 
-  const backgroundColor = useThemeColor({}, 'background');
-  const textColor = useThemeColor({}, 'text');
-  const cardBg = useThemeColor({ light: '#FFFFFF', dark: '#2C2C30' }, 'card');
+  const backgroundColor = useThemeColor({ light: '#FFFFFF', dark: '#0A0A0B' }, 'background');
+  const textColor = useThemeColor({ light: '#111827', dark: '#FFFFFF' }, 'text');
+  const secondaryTextColor = useThemeColor({ light: '#6B7280', dark: '#B8B8BD' }, 'text');
+  const cardBg = useThemeColor({ light: '#F9FAFB', dark: '#1A1A1C' }, 'card');
+  const borderColor = useThemeColor({ light: '#E5E7EB', dark: '#3A3A3F' }, 'border');
 
   // Temporarily disable useContentTracking to prevent infinite loops
   // TODO: Fix the useContentTracking hook to use stable function references
@@ -297,10 +344,10 @@ export function ContentDetailView({
     <ThemedView style={{ backgroundColor, flex: 1 }} className={className}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Hero Section */}
-        <View className="relative">
+        <View style={{ position: 'relative' }}>
           {/* Backdrop Image */}
           {content.backdropUrl && (
-            <View className="h-80 relative">
+            <View style={{ height: 320, position: 'relative' }}>
               <Image
                 source={{ uri: content.backdropUrl }}
                 style={{ width: '100%', height: '100%' }}
@@ -309,8 +356,8 @@ export function ContentDetailView({
               />
               {/* Enhanced gradient overlay */}
               <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.8)']}
-                locations={[0, 0.4, 1]}
+                colors={['transparent', 'rgba(10,10,11,0.4)', 'rgba(10,10,11,0.9)']}
+                locations={[0, 0.5, 1]}
                 style={{
                   position: 'absolute',
                   top: 0,
@@ -333,66 +380,170 @@ export function ContentDetailView({
           )}
 
           {/* Content Info Overlay */}
-          <View className="absolute bottom-0 left-0 right-0 p-6">
-            <View className="flex-row">
+          <View style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            padding: 24,
+          }}>
+            <View style={{ flexDirection: 'row' }}>
               {/* Poster */}
               {content.posterUrl && (
-                <View className="w-28 h-40 rounded-xl overflow-hidden mr-5 shadow-2xl">
+                <View style={{
+                  width: 112,
+                  height: 160,
+                  borderRadius: 12,
+                  overflow: 'hidden',
+                  marginRight: 20,
+                  shadowColor: '#000000',
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowOpacity: 0.4,
+                  shadowRadius: 16,
+                  elevation: 8,
+                }}>
                   <Image
                     source={{ uri: content.posterUrl }}
                     style={{ width: '100%', height: '100%' }}
                     resizeMode="cover"
                   />
                   {/* Subtle border on poster */}
-                  <View className="absolute inset-0 rounded-xl border border-white/20" />
+                  <View style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                  }} />
                 </View>
               )}
 
               {/* Title and Metadata */}
-              <View className="flex-1">
-                <ThemedText className="text-3xl font-bold text-white mb-3" style={{
+              <View style={{ flex: 1 }}>
+                <ThemedText style={{
+                  fontSize: 28,
+                  fontWeight: '700',
+                  color: '#FFFFFF',
+                  marginBottom: 12,
                   textShadowColor: 'rgba(0, 0, 0, 0.8)',
                   textShadowOffset: { width: 0, height: 2 },
-                  textShadowRadius: 4,
-                  letterSpacing: -0.5,
+                  textShadowRadius: 6,
+                  letterSpacing: -0.02,
+                  lineHeight: 32,
                 }}>
                   {content.title}
                 </ThemedText>
                 
-                <View className="flex-row items-center mb-3 flex-wrap">
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  marginBottom: 12,
+                  flexWrap: 'wrap',
+                }}>
                   {content.releaseDate && (
-                    <View className="bg-black/50 px-2 py-1 rounded-md mr-2 mb-1">
-                      <ThemedText className="text-white/90 text-sm font-semibold">
+                    <View style={{
+                      backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      borderRadius: 6,
+                      marginRight: 8,
+                      marginBottom: 4,
+                    }}>
+                      <ThemedText style={{
+                        color: 'rgba(255, 255, 255, 0.95)',
+                        fontSize: 14,
+                        fontWeight: '600',
+                      }}>
                         {new Date(content.releaseDate).getFullYear()}
                       </ThemedText>
                     </View>
                   )}
                   {content.runtime && (
-                    <View className="bg-black/50 px-2 py-1 rounded-md mr-2 mb-1">
-                      <ThemedText className="text-white/90 text-sm font-semibold">
+                    <View style={{
+                      backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      borderRadius: 6,
+                      marginRight: 8,
+                      marginBottom: 4,
+                    }}>
+                      <ThemedText style={{
+                        color: 'rgba(255, 255, 255, 0.95)',
+                        fontSize: 14,
+                        fontWeight: '600',
+                      }}>
                         {formatRuntime(content.runtime)}
                       </ThemedText>
                     </View>
                   )}
                   {content.userRatingAvg && (
-                    <View className="bg-black/50 px-2 py-1 rounded-md mr-2 mb-1 flex-row items-center">
+                    <View style={{
+                      backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      borderRadius: 6,
+                      marginRight: 8,
+                      marginBottom: 4,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                    }}>
                       <Ionicons name="star" size={14} color="#FFD700" style={{ marginRight: 4 }} />
-                      <ThemedText className="text-white/90 text-sm font-semibold">
+                      <ThemedText style={{
+                        color: 'rgba(255, 255, 255, 0.95)',
+                        fontSize: 14,
+                        fontWeight: '600',
+                      }}>
                         {content.userRatingAvg.toFixed(1)}
                       </ThemedText>
                     </View>
                   )}
                 </View>
 
-                <View className="flex-row items-center">
-                  <View className="bg-gradient-to-r from-purple-600 to-purple-700 px-3 py-1 rounded-full mr-2">
-                    <ThemedText className="text-white text-xs font-bold uppercase tracking-wider">
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{
+                    backgroundColor: '#8B4B7F',
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 20,
+                    marginRight: 8,
+                    shadowColor: '#8B4B7F',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 4,
+                    elevation: 3,
+                  }}>
+                    <ThemedText style={{
+                      color: '#FFFFFF',
+                      fontSize: 12,
+                      fontWeight: '700',
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.5,
+                    }}>
                       {content.contentType.replace('_', ' ')}
                     </ThemedText>
                   </View>
                   {content.caseType && (
-                    <View className="bg-gradient-to-r from-orange-500 to-orange-600 px-3 py-1 rounded-full">
-                      <ThemedText className="text-white text-xs font-bold uppercase tracking-wider">
+                    <View style={{
+                      backgroundColor: '#FF6B35',
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 20,
+                      shadowColor: '#FF6B35',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 4,
+                      elevation: 3,
+                    }}>
+                      <ThemedText style={{
+                        color: '#FFFFFF',
+                        fontSize: 12,
+                        fontWeight: '700',
+                        textTransform: 'uppercase',
+                        letterSpacing: 0.5,
+                      }}>
                         {content.caseType.replace('_', ' ')}
                       </ThemedText>
                     </View>
@@ -404,37 +555,50 @@ export function ContentDetailView({
         </View>
 
         {/* Action Buttons */}
-        <View className="p-6">
-          <View className="flex-row gap-3">
+        <View style={{ padding: 24 }}>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
             <Pressable
               onPress={handleWatchlistToggle}
               disabled={isAddingToWatchlist || isRemovingFromWatchlist}
-              className="flex-1"
-              style={{
-                backgroundColor: inWatchlist ? '#8B4B7F' : '#8B4B7F',
-                opacity: inWatchlist ? 0.8 : 1,
-                paddingVertical: 14,
-                paddingHorizontal: 20,
-                borderRadius: 12,
-                shadowColor: '#8B4B7F',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-                elevation: 4,
-              }}
+              style={[
+                {
+                  flex: 1,
+                  backgroundColor: '#BA0C2F', // Crime red from design system
+                  paddingVertical: 16,
+                  paddingHorizontal: 24,
+                  borderRadius: 12,
+                  shadowColor: '#BA0C2F',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                  elevation: 4,
+                },
+                inWatchlist && { backgroundColor: '#388E3C' } // Success green when added
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={inWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}
             >
-              <View className="flex-row items-center justify-center">
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
                 {isAddingToWatchlist || isRemovingFromWatchlist ? (
                   <LoadingSpinner size="small" color="#FFFFFF" />
                 ) : (
                   <>
                     <Ionicons 
-                      name={inWatchlist ? "checkmark" : "add"} 
+                      name={inWatchlist ? "checkmark-circle" : "add-circle"} 
                       size={20} 
                       color="#FFFFFF" 
                       style={{ marginRight: 8 }}
                     />
-                    <ThemedText className="text-white font-bold text-base">
+                    <ThemedText style={{
+                      color: '#FFFFFF',
+                      fontWeight: '700',
+                      fontSize: 16,
+                      letterSpacing: -0.02,
+                    }}>
                       {inWatchlist ? 'In Watchlist' : 'Add to Watchlist'}
                     </ThemedText>
                   </>
@@ -447,24 +611,36 @@ export function ContentDetailView({
                 onPress={handleMarkWatched}
                 disabled={isUpdatingProgress}
                 style={{
-                  backgroundColor: '#4CAF50',
-                  paddingVertical: 14,
+                  backgroundColor: '#10B981', // Success green from design system
+                  paddingVertical: 16,
                   paddingHorizontal: 20,
                   borderRadius: 12,
-                  shadowColor: '#4CAF50',
+                  shadowColor: '#10B981',
                   shadowOffset: { width: 0, height: 4 },
                   shadowOpacity: 0.3,
                   shadowRadius: 8,
                   elevation: 4,
                 }}
+                accessibilityRole="button"
+                accessibilityLabel="Mark as watched"
               >
-                <View className="flex-row items-center">
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
                   {isUpdatingProgress ? (
                     <LoadingSpinner size="small" color="#FFFFFF" />
                   ) : (
                     <>
                       <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
-                      <ThemedText className="text-white font-bold ml-2">
+                      <ThemedText style={{
+                        color: '#FFFFFF',
+                        fontWeight: '700',
+                        fontSize: 16,
+                        marginLeft: 8,
+                        letterSpacing: -0.02,
+                      }}>
                         Watched
                       </ThemedText>
                     </>
@@ -476,66 +652,87 @@ export function ContentDetailView({
             <Pressable
               onPress={handleShare}
               style={{
-                backgroundColor: '#FF6B35',
+                backgroundColor: cardBg,
+                borderWidth: 2,
+                borderColor: '#8B4B7F',
                 paddingVertical: 14,
                 paddingHorizontal: 20,
                 borderRadius: 12,
-                shadowColor: '#FF6B35',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-                elevation: 4,
+                shadowColor: '#8B4B7F',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.2,
+                shadowRadius: 4,
+                elevation: 2,
               }}
+              accessibilityRole="button"
+              accessibilityLabel="Share content"
             >
-              <Ionicons name="share" size={20} color="#FFFFFF" />
+              <Ionicons name="share" size={20} color="#8B4B7F" />
             </Pressable>
           </View>
         </View>
 
         {/* Content Warnings */}
         {content.sensitivityLevel && content.sensitivityLevel !== 'LOW' && (
-          <View className="px-6 mb-6">
+          <View style={{ paddingHorizontal: 24, marginBottom: 24 }}>
             <View 
-              className="p-5 rounded-xl"
-              style={{ 
+              style={{
+                padding: 20,
+                borderRadius: 12,
                 backgroundColor: `${getWarningLevel(content.sensitivityLevel).color}15`,
                 borderWidth: 2,
                 borderColor: getWarningLevel(content.sensitivityLevel).color,
                 shadowColor: getWarningLevel(content.sensitivityLevel).color,
-                shadowOffset: { width: 0, height: 2 },
+                shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.2,
-                shadowRadius: 4,
-                elevation: 3,
+                shadowRadius: 8,
+                elevation: 4,
               }}
             >
-              <View className="flex-row items-center mb-3">
-                <View 
-                  className="w-10 h-10 rounded-full items-center justify-center mr-3"
-                  style={{ backgroundColor: getWarningLevel(content.sensitivityLevel).color }}
-                >
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                marginBottom: 12,
+              }}>
+                <View style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 12,
+                  backgroundColor: getWarningLevel(content.sensitivityLevel).color,
+                }}>
                   <Ionicons 
                     name="warning" 
                     size={20} 
                     color="#FFFFFF"
                   />
                 </View>
-                <View className="flex-1">
-                  <ThemedText 
-                    className="font-bold text-lg"
-                    style={{ color: getWarningLevel(content.sensitivityLevel).color }}
-                  >
+                <View style={{ flex: 1 }}>
+                  <ThemedText style={{
+                    fontWeight: '700',
+                    fontSize: 18,
+                    color: getWarningLevel(content.sensitivityLevel).color,
+                    marginBottom: 2,
+                  }}>
                     Content Warning
                   </ThemedText>
-                  <ThemedText 
-                    className="font-semibold text-sm"
-                    style={{ color: getWarningLevel(content.sensitivityLevel).color }}
-                  >
+                  <ThemedText style={{
+                    fontWeight: '600',
+                    fontSize: 14,
+                    color: getWarningLevel(content.sensitivityLevel).color,
+                  }}>
                     {getWarningLevel(content.sensitivityLevel).label}
                   </ThemedText>
                 </View>
               </View>
               {content.contentWarnings && content.contentWarnings.length > 0 && (
-                <ThemedText className="text-sm leading-5" style={{ color: textColor }}>
+                <ThemedText style={{
+                  fontSize: 14,
+                  lineHeight: 20,
+                  color: textColor,
+                }}>
                   This content contains: {content.contentWarnings.join(', ')}
                 </ThemedText>
               )}
@@ -545,23 +742,35 @@ export function ContentDetailView({
 
         {/* Where to Watch */}
         {content.platforms && content.platforms.length > 0 && (
-          <View className="px-6 mb-6">
-            <View className="flex-row items-center mb-4">
-              <Ionicons name="tv" size={24} color="#8B4B7F" style={{ marginRight: 8 }} />
-              <ThemedText className="text-2xl font-bold" style={{ color: textColor }}>
+          <View style={{ paddingHorizontal: 24, marginBottom: 24 }}>
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginBottom: 16,
+            }}>
+              <Ionicons name="tv" size={24} color="#BA0C2F" style={{ marginRight: 12 }} />
+              <ThemedText style={{
+                fontSize: 24,
+                fontWeight: '700',
+                color: textColor,
+                letterSpacing: -0.02,
+              }}>
                 Where to Watch
               </ThemedText>
             </View>
-            <View className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
+            <View style={{
+              backgroundColor: cardBg,
+              borderRadius: 12,
+              padding: 16,
+              borderWidth: 1,
+              borderColor: borderColor,
+            }}>
               {content.platforms.map((platform, index) => (
                 <View key={platform.id}>
                   <PlatformButton
                     platform={platform}
                     onPress={() => handlePlatformPress(platform)}
                   />
-                  {index < (content.platforms?.length || 0) - 1 && (
-                    <View className="h-px bg-gray-200 dark:bg-gray-700 mx-4" />
-                  )}
                 </View>
               ))}
             </View>
@@ -569,28 +778,56 @@ export function ContentDetailView({
         )}
 
         {/* Synopsis */}
-        <View className="px-6 mb-6">
-          <View className="flex-row items-center mb-4">
-            <Ionicons name="document-text" size={24} color="#8B4B7F" style={{ marginRight: 8 }} />
-            <ThemedText className="text-2xl font-bold" style={{ color: textColor }}>
+        <View style={{ paddingHorizontal: 24, marginBottom: 24 }}>
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: 16,
+          }}>
+            <Ionicons name="document-text" size={24} color="#00338D" style={{ marginRight: 12 }} />
+            <ThemedText style={{
+              fontSize: 24,
+              fontWeight: '700',
+              color: textColor,
+              letterSpacing: -0.02,
+            }}>
               Synopsis
             </ThemedText>
           </View>
-          <View className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-5">
-            <ThemedText className="text-base leading-7" style={{ color: textColor }}>
+          <View style={{
+            backgroundColor: cardBg,
+            borderRadius: 12,
+            padding: 20,
+            borderWidth: 1,
+            borderColor: borderColor,
+          }}>
+            <ThemedText style={{
+              fontSize: 16,
+              lineHeight: 24,
+              color: textColor,
+            }}>
               {showFullSynopsis ? (content.synopsis || content.description) : 
                (content.synopsis || content.description)?.substring(0, 250) + '...'}
             </ThemedText>
             {(content.synopsis || content.description) && (content.synopsis || content.description)?.length && (content.synopsis || content.description)!.length > 250 && (
-              <Pressable onPress={() => setShowFullSynopsis(!showFullSynopsis)} className="mt-4">
-                <View className="flex-row items-center">
-                  <ThemedText style={{ color: '#8B4B7F', fontWeight: '600', fontSize: 16 }}>
+              <Pressable 
+                onPress={() => setShowFullSynopsis(!showFullSynopsis)} 
+                style={{ marginTop: 16 }}
+                accessibilityRole="button"
+                accessibilityLabel={showFullSynopsis ? 'Show less synopsis' : 'Show more synopsis'}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <ThemedText style={{
+                    color: '#BA0C2F',
+                    fontWeight: '600',
+                    fontSize: 16,
+                  }}>
                     {showFullSynopsis ? 'Show Less' : 'Read More'}
                   </ThemedText>
                   <Ionicons 
                     name={showFullSynopsis ? 'chevron-up' : 'chevron-down'} 
                     size={16} 
-                    color="#8B4B7F" 
+                    color="#BA0C2F" 
                     style={{ marginLeft: 4 }}
                   />
                 </View>
@@ -601,33 +838,98 @@ export function ContentDetailView({
 
         {/* Case Information */}
         {content.caseName && (
-          <View className="px-6 mb-6">
-            <View className="flex-row items-center mb-4">
-              <Ionicons name="folder" size={24} color="#FF6B35" style={{ marginRight: 8 }} />
-              <ThemedText className="text-2xl font-bold" style={{ color: textColor }}>
+          <View style={{ paddingHorizontal: 24, marginBottom: 24 }}>
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginBottom: 16,
+            }}>
+              <Ionicons name="folder" size={24} color="#FF6B35" style={{ marginRight: 12 }} />
+              <ThemedText style={{
+                fontSize: 24,
+                fontWeight: '700',
+                color: textColor,
+                letterSpacing: -0.02,
+              }}>
                 Case Information
               </ThemedText>
             </View>
-            <View className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-gray-800 dark:to-gray-700 p-5 rounded-xl border border-orange-200 dark:border-gray-600">
-              <View className="space-y-3">
-                <View className="flex-row justify-between items-start">
-                  <ThemedText className="font-semibold text-gray-700 dark:text-gray-300 text-base">Case Name:</ThemedText>
-                  <ThemedText className="font-bold text-right flex-1 ml-4" style={{ color: '#FF6B35', fontSize: 16 }}>
+            <View style={{
+              backgroundColor: cardBg,
+              padding: 20,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: '#FF6B35',
+              shadowColor: '#FF6B35',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+              elevation: 2,
+            }}>
+              <View>
+                <View style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: 12,
+                }}>
+                  <ThemedText style={{
+                    fontWeight: '600',
+                    color: secondaryTextColor,
+                    fontSize: 16,
+                  }}>Case Name:</ThemedText>
+                  <ThemedText style={{
+                    fontWeight: '700',
+                    textAlign: 'right',
+                    flex: 1,
+                    marginLeft: 16,
+                    color: '#FF6B35',
+                    fontSize: 16,
+                  }}>
                     {content.caseName}
                   </ThemedText>
                 </View>
                 {content.location && (
-                  <View className="flex-row justify-between items-start">
-                    <ThemedText className="font-semibold text-gray-700 dark:text-gray-300 text-base">Location:</ThemedText>
-                    <ThemedText className="text-right flex-1 ml-4" style={{ color: textColor, fontSize: 15 }}>
+                  <View style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    marginBottom: 12,
+                  }}>
+                    <ThemedText style={{
+                      fontWeight: '600',
+                      color: secondaryTextColor,
+                      fontSize: 16,
+                    }}>Location:</ThemedText>
+                    <ThemedText style={{
+                      textAlign: 'right',
+                      flex: 1,
+                      marginLeft: 16,
+                      color: textColor,
+                      fontSize: 15,
+                    }}>
                       {content.location}
                     </ThemedText>
                   </View>
                 )}
                 {content.timeframStart && (
-                  <View className="flex-row justify-between items-start">
-                    <ThemedText className="font-semibold text-gray-700 dark:text-gray-300 text-base">Timeframe:</ThemedText>
-                    <ThemedText className="text-right flex-1 ml-4" style={{ color: textColor, fontSize: 15 }}>
+                  <View style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                  }}>
+                    <ThemedText style={{
+                      fontWeight: '600',
+                      color: secondaryTextColor,
+                      fontSize: 16,
+                    }}>Timeframe:</ThemedText>
+                    <ThemedText style={{
+                      textAlign: 'right',
+                      flex: 1,
+                      marginLeft: 16,
+                      color: textColor,
+                      fontSize: 15,
+                    }}>
                       {formatDate(content.timeframStart)}
                       {content.timeframEnd && ` - ${formatDate(content.timeframEnd)}`}
                     </ThemedText>
@@ -640,43 +942,88 @@ export function ContentDetailView({
 
         {/* Cast & Crew */}
         {((content.cast && content.cast.length > 0) || (content.crew && content.crew.length > 0)) && (
-          <View className="px-6 mb-6">
-            <View className="flex-row items-center mb-4">
-              <Ionicons name="people" size={24} color="#8B4B7F" style={{ marginRight: 8 }} />
-              <ThemedText className="text-2xl font-bold" style={{ color: textColor }}>
+          <View style={{ paddingHorizontal: 24, marginBottom: 24 }}>
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginBottom: 16,
+            }}>
+              <Ionicons name="people" size={24} color="#4A1850" style={{ marginRight: 12 }} />
+              <ThemedText style={{
+                fontSize: 24,
+                fontWeight: '700',
+                color: textColor,
+                letterSpacing: -0.02,
+              }}>
                 Cast & Crew
               </ThemedText>
             </View>
             
-            <View className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-5">
+            <View style={{
+              backgroundColor: cardBg,
+              borderRadius: 12,
+              padding: 20,
+              borderWidth: 1,
+              borderColor: borderColor,
+            }}>
               {content.crew && content.crew.length > 0 && (
-                <View className="mb-6">
-                  <View className="flex-row items-center mb-3">
-                    <Ionicons name="camera" size={18} color="#FF6B35" style={{ marginRight: 6 }} />
-                    <ThemedText className="font-bold text-lg" style={{ color: textColor }}>
+                <View style={{ marginBottom: 24 }}>
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginBottom: 12,
+                  }}>
+                    <Ionicons name="camera" size={18} color="#FF6B35" style={{ marginRight: 8 }} />
+                    <ThemedText style={{
+                      fontWeight: '700',
+                      fontSize: 18,
+                      color: textColor,
+                    }}>
                       Crew
                     </ThemedText>
                   </View>
                   {content.crew.slice(0, 6).map((person, index) => (
                     <View key={person.id}>
-                      <View className="flex-row justify-between items-center py-3">
-                        <View className="flex-1">
-                          <ThemedText className="font-semibold text-base" style={{ color: textColor }}>
+                      <View style={{
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        paddingVertical: 12,
+                      }}>
+                        <View style={{ flex: 1 }}>
+                          <ThemedText style={{
+                            fontWeight: '600',
+                            fontSize: 16,
+                            color: textColor,
+                            marginBottom: 2,
+                          }}>
                             {person.name}
                           </ThemedText>
-                          <ThemedText className="text-sm text-gray-600 dark:text-gray-400">
+                          <ThemedText style={{
+                            fontSize: 14,
+                            color: secondaryTextColor,
+                          }}>
                             {person.job} • {person.department}
                           </ThemedText>
                         </View>
-                        <Ionicons name="chevron-forward" size={16} color="#8A8A94" />
+                        <Ionicons name="chevron-forward" size={16} color={secondaryTextColor} />
                       </View>
                       {index < Math.min(content.crew?.length || 0, 6) - 1 && (
-                        <View className="h-px bg-gray-200 dark:bg-gray-700" />
+                        <View style={{
+                          height: 1,
+                          backgroundColor: borderColor,
+                          marginHorizontal: 8,
+                        }} />
                       )}
                     </View>
                   ))}
                   {content.crew && content.crew.length > 6 && (
-                    <ThemedText className="text-center text-sm text-gray-500 mt-2">
+                    <ThemedText style={{
+                      textAlign: 'center',
+                      fontSize: 14,
+                      color: secondaryTextColor,
+                      marginTop: 8,
+                    }}>
                       +{content.crew.length - 6} more crew members
                     </ThemedText>
                   )}
@@ -685,32 +1032,62 @@ export function ContentDetailView({
 
               {content.cast && content.cast.length > 0 && (
                 <View>
-                  <View className="flex-row items-center mb-3">
-                    <Ionicons name="person" size={18} color="#8B4B7F" style={{ marginRight: 6 }} />
-                    <ThemedText className="font-bold text-lg" style={{ color: textColor }}>
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginBottom: 12,
+                  }}>
+                    <Ionicons name="person" size={18} color="#4A1850" style={{ marginRight: 8 }} />
+                    <ThemedText style={{
+                      fontWeight: '700',
+                      fontSize: 18,
+                      color: textColor,
+                    }}>
                       Cast
                     </ThemedText>
                   </View>
                   {content.cast.slice(0, 6).map((person, index) => (
                     <View key={person.id}>
-                      <View className="flex-row justify-between items-center py-3">
-                        <View className="flex-1">
-                          <ThemedText className="font-semibold text-base" style={{ color: textColor }}>
+                      <View style={{
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        paddingVertical: 12,
+                      }}>
+                        <View style={{ flex: 1 }}>
+                          <ThemedText style={{
+                            fontWeight: '600',
+                            fontSize: 16,
+                            color: textColor,
+                            marginBottom: 2,
+                          }}>
                             {person.name}
                           </ThemedText>
-                          <ThemedText className="text-sm text-gray-600 dark:text-gray-400">
+                          <ThemedText style={{
+                            fontSize: 14,
+                            color: secondaryTextColor,
+                          }}>
                             {person.role || 'Actor'}
                           </ThemedText>
                         </View>
-                        <Ionicons name="chevron-forward" size={16} color="#8A8A94" />
+                        <Ionicons name="chevron-forward" size={16} color={secondaryTextColor} />
                       </View>
                       {index < Math.min(content.cast?.length || 0, 6) - 1 && (
-                        <View className="h-px bg-gray-200 dark:bg-gray-700" />
+                        <View style={{
+                          height: 1,
+                          backgroundColor: borderColor,
+                          marginHorizontal: 8,
+                        }} />
                       )}
                     </View>
                   ))}
                   {content.cast && content.cast.length > 6 && (
-                    <ThemedText className="text-center text-sm text-gray-500 mt-2">
+                    <ThemedText style={{
+                      textAlign: 'center',
+                      fontSize: 14,
+                      color: secondaryTextColor,
+                      marginTop: 8,
+                    }}>
                       +{content.cast.length - 6} more cast members
                     </ThemedText>
                   )}
@@ -721,7 +1098,7 @@ export function ContentDetailView({
         )}
 
         {/* Footer spacing */}
-        <View className="h-12" />
+        <View style={{ height: 48 }} />
       </ScrollView>
     </ThemedView>
   );

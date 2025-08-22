@@ -299,6 +299,10 @@ export type ContentRouter = {
     input: { id: string };
     output: Content;
   };
+  getExternalContent: {
+    input: { externalId: string };
+    output: Content;
+  };
   search: {
     input: {
       query: string;
@@ -398,6 +402,7 @@ export interface AppRouter {
   content: {
     search: any;
     getById: any;
+    getExternalContent: any;
     list: any;
     addToWatchlist: any;
     removeFromWatchlist: any;
