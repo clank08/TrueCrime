@@ -1,0 +1,22 @@
+{
+  "timestamp": "2025-08-21T17:42:17.330Z",
+  "duration": 72459,
+  "results": {
+    "passed": 0,
+    "failed": 10,
+    "skipped": 0,
+    "suites": {
+      "backend.unit": "failed",
+      "backend.integration": "failed",
+      "backend.performance": "failed",
+      "backend.contracts": "failed",
+      "backend.security": "failed",
+      "backend.e2e": "failed",
+      "frontend.unit": "failed",
+      "frontend.integration": "failed",
+      "frontend.e2e": "failed",
+      "frontend.accessibility": "failed"
+    }
+  },
+  "successRate": 0
+}

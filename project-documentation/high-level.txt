@@ -1,0 +1,42 @@
+True Crime App - High Level Summary
+🎯 The Opportunity
+Problem: True Crime fans have content scattered across 200+ streaming services AND cable networks (Investigation Discovery, Oxygen, A&E) with no way to track what they've watched or discover new content related to specific cases/killers.
+Solution: The first comprehensive True Crime tracking app that consolidates streaming + cable using legitimate APIs, with social features and case-based discovery.
+
+The MVP should generally flow like this:
+
+Sign up → Email/social authentication
+Platform selection → Choose streaming services + cable provider
+Interest setup → Select favorite True Crime categories (serial killers, cold cases, etc.)
+Quick tutorial → "Add your first show and rate it"
+
+🏠 Dashboard
+├── "What I'm Watching" (continue where left off)
+├── "Trending in True Crime" (popular content)
+├── "New This Week" (fresh content alerts)
+└── "Friend Activity" (if enabled)
+
+🔍 Discover Content
+├── Search across all platforms ("Ted Bundy documentaries")
+├── Browse by case/killer ("Jeffrey Dahmer content")
+├── Filter by platform ("Investigation Discovery only")
+└── See availability with deep links
+
+➕ Track Content
+├── Quick add from search results
+├── Rate 1-5 stars (user defines criteria)
+├── Mark status (want to watch/watching/completed)
+├── Add personal notes about the case
+└── Tag with cases/suspects
+
+👥 Social Features (Privacy-First)
+├── Create/share custom lists ("Best Serial Killer Docs")
+├── See friend recommendations (if opted-in)
+├── Join community challenges ("90s Cold Cases Week")
+└── Privacy controls (everything private by default)
+
+📱 Notifications
+├── New content alerts for followed cases
+├── Friend recommendations
+├── Weekly digest of new True Crime content
+└── Cable programming reminders

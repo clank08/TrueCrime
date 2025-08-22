@@ -1,0 +1,251 @@
+version: '3.8'
+
+services:
+  # ============================================================================
+  # Backend Service
+  # ============================================================================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: truecrime-backend
+    ports:
+      - "3000:3000"
+      - "9229:9229" # Node.js debugger port
+    volumes:
+      - ./src:/app/src
+      - ./prisma:/app/prisma
+      - ./.env:/app/.env
+      - /app/node_modules # Prevent overwriting node_modules
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://truecrime:truecrime@postgres:5432/truecrime_db
+      - REDIS_URL=redis://redis:6379
+      - MEILISEARCH_URL=http://meilisearch:7700
+      - TEMPORAL_URL=temporal:7233
+    depends_on:
+      - postgres
+      - redis
+      - meilisearch
+      - temporal
+    networks:
+      - truecrime-network
+    restart: unless-stopped
+    command: npm run dev
+
+  # ============================================================================
+  # PostgreSQL Database (Supabase local)
+  # ============================================================================
+  postgres:
+    image: supabase/postgres:15.1.0.117
+    container_name: truecrime-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: truecrime
+      POSTGRES_PASSWORD: truecrime
+      POSTGRES_DB: truecrime_db
+      POSTGRES_HOST: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U truecrime -d truecrime_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - truecrime-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # Redis Cache
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: truecrime-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - truecrime-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # Meilisearch (Search Engine)
+  # ============================================================================
+  meilisearch:
+    image: getmeili/meilisearch:v1.6
+    container_name: truecrime-meilisearch
+    ports:
+      - "7700:7700"
+    environment:
+      MEILI_MASTER_KEY: masterKey_CHANGE_THIS_IN_PRODUCTION
+      MEILI_ENV: development
+      MEILI_LOG_LEVEL: INFO
+      MEILI_NO_ANALYTICS: true
+    volumes:
+      - meilisearch_data:/meili_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - truecrime-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # Temporal PostgreSQL (Separate database for Temporal)
+  # ============================================================================
+  temporal-postgres:
+    image: postgres:15-alpine
+    container_name: truecrime-temporal-postgres
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: temporal
+      POSTGRES_DB: temporal
+    volumes:
+      - temporal_postgres_data:/var/lib/postgresql/data
+    networks:
+      - truecrime-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # Temporal (Workflow Engine)
+  # ============================================================================
+  temporal:
+    image: temporalio/auto-setup:1.22.4
+    container_name: truecrime-temporal
+    ports:
+      - "7233:7233"
+    environment:
+      - DB=postgresql
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=temporal-postgres
+      - ENABLE_ES=false
+      - SKIP_DEFAULT_NAMESPACE_CREATION=false
+    depends_on:
+      - temporal-postgres
+    networks:
+      - truecrime-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # Temporal Admin Tools
+  # ============================================================================
+  temporal-admin-tools:
+    image: temporalio/admin-tools:1.22.4
+    container_name: truecrime-temporal-admin
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_CLI_ADDRESS=temporal:7233
+    networks:
+      - truecrime-network
+    stdin_open: true
+    tty: true
+
+  # ============================================================================
+  # Temporal Web UI
+  # ============================================================================
+  temporal-ui:
+    image: temporalio/ui:2.21.3
+    container_name: truecrime-temporal-ui
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+    ports:
+      - "8080:8080"
+    networks:
+      - truecrime-network
+
+  # ============================================================================
+  # pgAdmin (Database Management)
+  # ============================================================================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: truecrime-pgadmin
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@truecrime.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - truecrime-network
+    restart: unless-stopped
+    profiles:
+      - tools
+
+  # ============================================================================
+  # RedisInsight (Redis Management)
+  # ============================================================================
+  redis-insight:
+    image: redislabs/redisinsight:latest
+    container_name: truecrime-redis-insight
+    ports:
+      - "8001:8001"
+    volumes:
+      - redis_insight_data:/db
+    networks:
+      - truecrime-network
+    restart: unless-stopped
+    profiles:
+      - tools
+
+  # ============================================================================
+  # Mailhog (Email Testing)
+  # ============================================================================
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: truecrime-mailhog
+    ports:
+      - "1025:1025" # SMTP server
+      - "8025:8025" # Web UI
+    networks:
+      - truecrime-network
+    restart: unless-stopped
+    profiles:
+      - tools
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  truecrime-network:
+    driver: bridge
+    name: truecrime-network
+
+# ============================================================================
+# Volumes
+# ============================================================================
+volumes:
+  postgres_data:
+    name: truecrime-postgres-data
+  redis_data:
+    name: truecrime-redis-data
+  meilisearch_data:
+    name: truecrime-meilisearch-data
+  pgadmin_data:
+    name: truecrime-pgadmin-data
+  redis_insight_data:
+    name: truecrime-redis-insight-data
+  temporal_postgres_data:
+    name: truecrime-temporal-postgres-data

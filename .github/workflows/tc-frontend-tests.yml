@@ -1,0 +1,388 @@
+name: TC Frontend Tests
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'TC-frontend/**'
+      - '.github/workflows/tc-frontend-tests.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'TC-frontend/**'
+      - '.github/workflows/tc-frontend-tests.yml'
+
+defaults:
+  run:
+    working-directory: TC-frontend/TrueCrime
+
+jobs:
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: TC-frontend/TrueCrime/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: TC-frontend/TrueCrime/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests with coverage
+        run: npm run test:unit -- --coverage
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./TC-frontend/TrueCrime/coverage/lcov.info
+          flags: unit
+          name: tc-frontend-unit
+
+      - name: Check coverage thresholds
+        run: |
+          npm run test:coverage -- --coverageReporters=json-summary
+          node -e "
+            const coverage = require('./coverage/coverage-summary.json');
+            const total = coverage.total;
+            const thresholds = { branches: 80, functions: 80, lines: 80, statements: 80 };
+            let failed = false;
+            
+            Object.keys(thresholds).forEach(key => {
+              const actual = total[key].pct;
+              if (actual < thresholds[key]) {
+                console.error(\`Coverage for \${key} (\${actual}%) is below threshold (\${thresholds[key]}%)\`);
+                failed = true;
+              }
+            });
+            
+            if (failed) process.exit(1);
+          "
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: TC-frontend/TrueCrime/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run integration tests
+        run: npm run test:integration
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: TC-frontend/TrueCrime/test-results/
+
+  e2e-ios:
+    name: E2E Tests (iOS)
+    runs-on: macos-latest
+    needs: [unit-tests, integration-tests]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: TC-frontend/TrueCrime/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Detox CLI
+        run: npm install -g detox-cli
+
+      - name: Setup Ruby (for CocoaPods)
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.0'
+          bundler-cache: true
+
+      - name: Install CocoaPods
+        run: |
+          cd ios
+          pod install
+
+      - name: Build iOS app for testing
+        run: npm run e2e:build -- --configuration ios.sim.debug
+
+      - name: Run E2E tests on iOS
+        run: npm run e2e:test -- --configuration ios.sim.debug --cleanup
+
+      - name: Upload E2E test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-ios-artifacts
+          path: |
+            TC-frontend/TrueCrime/artifacts/
+            TC-frontend/TrueCrime/.detox/
+
+  e2e-android:
+    name: E2E Tests (Android)
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests]
+    strategy:
+      matrix:
+        api-level: [29, 33]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: TC-frontend/TrueCrime/package-lock.json
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Detox CLI
+        run: npm install -g detox-cli
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Build Android app for testing
+        run: npm run e2e:build -- --configuration android.emu.debug
+
+      - name: AVD cache
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ matrix.api-level }}
+
+      - name: Create AVD and generate snapshot for caching
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "Generated AVD snapshot for caching."
+
+      - name: Run E2E tests on Android
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: npm run e2e:test -- --configuration android.emu.debug --cleanup
+
+      - name: Upload E2E test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-android-${{ matrix.api-level }}-artifacts
+          path: |
+            TC-frontend/TrueCrime/artifacts/
+            TC-frontend/TrueCrime/.detox/
+
+  accessibility-tests:
+    name: Accessibility Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: TC-frontend/TrueCrime/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run accessibility tests
+        run: npm run test:a11y
+
+      - name: Generate accessibility report
+        run: npm run test:a11y:report
+
+      - name: Upload accessibility report
+        uses: actions/upload-artifact@v4
+        with:
+          name: accessibility-report
+          path: TC-frontend/TrueCrime/a11y-report/
+
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: TC-frontend/TrueCrime/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run performance tests
+        run: npm run test:performance
+
+      - name: Check performance budgets
+        run: |
+          node -e "
+            const results = require('./performance-results.json');
+            const budgets = {
+              'bundle-size': 2000000, // 2MB
+              'initial-load': 3000,    // 3s
+              'interaction-latency': 100 // 100ms
+            };
+            
+            let failed = false;
+            Object.keys(budgets).forEach(metric => {
+              if (results[metric] > budgets[metric]) {
+                console.error(\`Performance metric \${metric} (\${results[metric]}) exceeds budget (\${budgets[metric]})\`);
+                failed = true;
+              }
+            });
+            
+            if (failed) process.exit(1);
+          "
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-results
+          path: TC-frontend/TrueCrime/performance-results.json
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: TC-frontend/TrueCrime/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+
+      - name: Run Snyk security scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=medium --file=TC-frontend/TrueCrime/package.json
+
+      - name: Check for sensitive data
+        run: |
+          # Check for hardcoded secrets
+          npx secretlint "**/*" --secretlintignore .secretlintignore
+
+  all-tests-passed:
+    name: All Tests Passed
+    runs-on: ubuntu-latest
+    needs: [lint, unit-tests, integration-tests, accessibility-tests, performance-tests, security-scan]
+    if: always()
+    steps:
+      - name: Check test results
+        run: |
+          if [[ "${{ needs.lint.result }}" != "success" || \
+                "${{ needs.unit-tests.result }}" != "success" || \
+                "${{ needs.integration-tests.result }}" != "success" || \
+                "${{ needs.accessibility-tests.result }}" != "success" || \
+                "${{ needs.performance-tests.result }}" != "success" || \
+                "${{ needs.security-scan.result }}" != "success" ]]; then
+            echo "One or more test jobs failed"
+            exit 1
+          fi
+          echo "All tests passed successfully!"
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ All TC Frontend tests passed successfully!'
+            })

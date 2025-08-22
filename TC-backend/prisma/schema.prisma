@@ -1,0 +1,933 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// AUTHENTICATION & USER MANAGEMENT
+// ============================================================================
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  emailVerified   Boolean   @default(false)
+  emailVerifiedAt DateTime?
+  hashedPassword  String? // Optional for OAuth users
+  firstName       String?
+  lastName        String?
+  displayName     String?
+  avatar          String?
+  bio             String?
+  location        String?
+  timezone        String    @default("America/New_York")
+
+  // User preferences and settings
+  preferences UserPreferences?
+
+  // Authentication providers
+  authProviders AuthProvider[]
+
+  // Session management
+  sessions UserSession[]
+
+  // Password reset
+  passwordResets PasswordReset[]
+
+  // Email verification
+  emailVerifications EmailVerification[]
+
+  // Account status
+  isActive        Boolean   @default(true)
+  isSuspended     Boolean   @default(false)
+  suspendedAt     DateTime?
+  suspendedReason String?
+
+  // Privacy and consent
+  privacyLevel          PrivacyLevel @default(PRIVATE)
+  marketingConsent      Boolean      @default(false)
+  dataProcessingConsent Boolean      @default(true)
+
+  // Timestamps
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  lastLoginAt    DateTime?
+  lastActivityAt DateTime?
+
+  // Content tracking and discovery
+  contentTracking ContentTracking[]
+  userInterests   UserInterest[]
+  episodeProgress EpisodeProgress[]
+  watchlists      Watchlist[]
+  contentReviews  ContentReview[]
+
+  // Social features (will be expanded later)
+  followers UserFollow[] @relation("UserFollowers")
+  following UserFollow[] @relation("UserFollowing")
+
+  @@map("users")
+}
+
+model UserPreferences {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Notification preferences
+  emailNotifications  Boolean @default(true)
+  pushNotifications   Boolean @default(true)
+  weeklyDigest        Boolean @default(true)
+  newContentAlerts    Boolean @default(true)
+  socialNotifications Boolean @default(true)
+
+  // Content preferences
+  explicitContent  Boolean @default(false)
+  contentWarnings  Boolean @default(true)
+  autoplayTrailers Boolean @default(true)
+
+  // Discovery preferences
+  recommendBasedOnFriends Boolean @default(true)
+  includeWatchedContent   Boolean @default(false)
+
+  // Language and region
+  language String @default("en")
+  region   String @default("US")
+
+  // UI preferences
+  theme       Theme   @default(DARK)
+  compactMode Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("user_preferences")
+}
+
+model AuthProvider {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  provider       String // google, apple, github, etc.
+  providerId     String // The user ID from the provider
+  providerEmail  String?
+  providerName   String?
+  providerAvatar String?
+
+  accessToken    String? // Encrypted
+  refreshToken   String? // Encrypted
+  tokenExpiresAt DateTime?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([provider, providerId])
+  @@unique([userId, provider])
+  @@map("auth_providers")
+}
+
+model UserSession {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  sessionToken String  @unique
+  refreshToken String? @unique
+
+  // Session metadata
+  deviceInfo String?
+  userAgent  String?
+  ipAddress  String?
+  location   String?
+
+  // Session status
+  isActive Boolean @default(true)
+
+  // Timestamps
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  expiresAt      DateTime
+  lastActivityAt DateTime @default(now())
+
+  @@map("user_sessions")
+}
+
+model PasswordReset {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  token  String    @unique
+  isUsed Boolean   @default(false)
+  usedAt DateTime?
+
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@map("password_resets")
+}
+
+model EmailVerification {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  token  String    @unique
+  email  String // The email being verified
+  isUsed Boolean   @default(false)
+  usedAt DateTime?
+
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@map("email_verifications")
+}
+
+// ============================================================================
+// CONTENT DISCOVERY & MANAGEMENT
+// ============================================================================
+
+// Main content metadata and discovery
+model Content {
+  id String @id @default(cuid())
+
+  // External content identifiers
+  externalId  String // Primary external ID (from TMDB, etc.)
+  tmdbId      String? // TMDB ID for metadata enrichment
+  imdbId      String? // IMDB ID for cross-referencing
+  watchmodeId String? // Watchmode ID for availability
+
+  // Basic content information
+  title         String
+  originalTitle String?
+  description   String?
+  synopsis      String? // Extended description
+  releaseDate   DateTime?
+  runtime       Int? // In minutes
+
+  // Content classification
+  contentType     ContentType
+  trueCrimeGenres String[] // JSON array of TC-specific genres
+  generalGenres   String[] // General genres from TMDB
+
+  // Content quality and ratings
+  tmdbRating      Float? // TMDB average rating
+  userRatingAvg   Float? // Our platform average
+  userRatingCount Int    @default(0)
+
+  // True Crime specific metadata
+  caseType           CaseType? // Type of true crime case
+  caseName           String? // Name of the case/investigation
+  timeframStart      DateTime? // When the case/events started
+  timeframEnd        DateTime? // When the case/events ended
+  location           String? // Geographic location of case
+  isBasedOnTrueFacts Boolean         @default(true)
+  factualityLevel    FactualityLevel @default(DOCUMENTARY)
+
+  // Content warnings and sensitivity
+  contentWarnings  String[] // JSON array of warning tags
+  sensitivityLevel SensitivityLevel @default(MODERATE)
+
+  // Media and assets
+  posterUrl   String?
+  backdropUrl String?
+  trailerUrl  String?
+  images      ContentImage[]
+
+  // SEO and searchability
+  slug           String   @unique
+  searchKeywords String[] // Keywords for enhanced search
+
+  // Platform availability tracking
+  platformAvailability PlatformAvailability[]
+
+  // User interactions
+  contentTracking ContentTracking[]
+  watchlists      WatchlistItem[]
+  reviews         ContentReview[]
+
+  // Related content and case connections
+  relatedCases     CaseContent[]     @relation("ContentCases")
+  relatedKillers   KillerContent[]   @relation("ContentKillers")
+  relatedContent   ContentRelation[] @relation("ParentContent")
+  relatedToContent ContentRelation[] @relation("RelatedContent")
+
+  // Cast and crew
+  cast ContentCast[]
+  crew ContentCrew[]
+
+  // Series specific (for TV shows/docuseries)
+  totalSeasons  Int?
+  totalEpisodes Int?
+  episodes      Episode[]
+
+  // Metadata
+  isActive   Boolean   @default(true)
+  lastSyncAt DateTime? // Last external API sync
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([contentType])
+  @@index([caseType])
+  @@index([releaseDate])
+  @@index([userRatingAvg])
+  @@index([isActive, contentType])
+  @@index([externalId])
+  @@index([slug])
+  @@map("content")
+}
+
+// Episodes for series content
+model Episode {
+  id        String  @id @default(cuid())
+  contentId String
+  content   Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  externalId    String? // External episode ID
+  episodeNumber Int
+  seasonNumber  Int
+  title         String
+  description   String?
+  runtime       Int? // In minutes
+  airDate       DateTime?
+
+  stillUrl String? // Episode still image
+
+  // User episode tracking
+  episodeProgress EpisodeProgress[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([contentId, seasonNumber, episodeNumber])
+  @@index([contentId, seasonNumber])
+  @@map("episodes")
+}
+
+// Platform availability for content
+model PlatformAvailability {
+  id        String  @id @default(cuid())
+  contentId String
+  content   Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  platformId   String // Platform identifier
+  platformName String // Human readable platform name
+  platformType PlatformType // Streaming, Cable, Digital Purchase, etc.
+
+  isAvailable      Boolean          @default(true)
+  availabilityType AvailabilityType // Free, Subscription, Purchase, Rent
+  price            Float? // For purchase/rent platforms
+  currency         String? // Currency for pricing
+  region           String           @default("US") // Regional availability
+
+  deepLinkUrl String? // Direct link to content
+
+  // Availability timing
+  availableFrom  DateTime? // When content becomes available
+  availableUntil DateTime? // When content is removed
+
+  // Metadata
+  lastCheckedAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([contentId, platformId])
+  @@index([platformId, isAvailable])
+  @@index([availabilityType])
+  @@index([region])
+  @@map("platform_availability")
+}
+
+// Content images (posters, backdrops, stills)
+model ContentImage {
+  id        String  @id @default(cuid())
+  contentId String
+  content   Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  imageType   ImageType
+  url         String
+  width       Int?
+  height      Int?
+  aspectRatio Float?
+
+  isDefault Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([contentId, imageType])
+  @@map("content_images")
+}
+
+// Cast information for content
+model ContentCast {
+  id        String  @id @default(cuid())
+  contentId String
+  content   Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  personId String
+  person   Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  role       String? // Character name or role description
+  orderIndex Int // Order of importance
+
+  @@unique([contentId, personId])
+  @@index([personId])
+  @@map("content_cast")
+}
+
+// Crew information for content
+model ContentCrew {
+  id        String  @id @default(cuid())
+  contentId String
+  content   Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  personId String
+  person   Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  job        String // Director, Producer, etc.
+  department String // Production, Directing, etc.
+  orderIndex Int    @default(0)
+
+  @@index([contentId, job])
+  @@index([personId])
+  @@map("content_crew")
+}
+
+// People (cast and crew)
+model Person {
+  id String @id @default(cuid())
+
+  externalId      String? // External person ID (TMDB, etc.)
+  name            String
+  biography       String?
+  birthDate       DateTime?
+  deathDate       DateTime?
+  profileImageUrl String?
+
+  // Relationships
+  castRoles ContentCast[]
+  crewRoles ContentCrew[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+  @@map("people")
+}
+
+// User content tracking (enhanced from basic version)
+model ContentTracking {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  contentId String
+  content   Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  status WatchStatus @default(WANT_TO_WATCH)
+  rating Int? // 1-5 scale
+  review String? // User review text
+  notes  String? // Private user notes
+
+  // Progress tracking
+  currentSeason   Int? // For series content
+  currentEpisode  Int? // For series content
+  progressPercent Float? // Overall progress (0.0 - 1.0)
+
+  // Timing
+  startedWatchingAt DateTime?
+  lastWatchedAt     DateTime?
+  completedAt       DateTime?
+
+  // Privacy and sharing
+  isPublic Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, contentId])
+  @@index([userId, status])
+  @@index([userId, lastWatchedAt])
+  @@index([contentId])
+  @@map("content_tracking")
+}
+
+// Episode-level progress tracking
+model EpisodeProgress {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  episodeId String
+  episode   Episode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+
+  watchedAt       DateTime?
+  progressPercent Float? // Episode progress (0.0 - 1.0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, episodeId])
+  @@index([userId])
+  @@map("episode_progress")
+}
+
+// User watchlists
+model Watchlist {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+  isDefault   Boolean @default(false) // Default "Watch Later" list
+  isPublic    Boolean @default(false)
+
+  items WatchlistItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, isDefault])
+  @@map("watchlists")
+}
+
+// Watchlist items
+model WatchlistItem {
+  id          String    @id @default(cuid())
+  watchlistId String
+  watchlist   Watchlist @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
+
+  contentId String
+  content   Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  notes      String? // User notes for this item
+  orderIndex Int     @default(0) // For custom ordering
+
+  createdAt DateTime @default(now())
+
+  @@unique([watchlistId, contentId])
+  @@index([watchlistId])
+  @@map("watchlist_items")
+}
+
+// Content reviews and ratings
+model ContentReview {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  contentId String
+  content   Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  rating Int // 1-5 stars
+  title  String?
+  review String
+
+  // Moderation
+  isPublic  Boolean @default(true)
+  isFlagged Boolean @default(false)
+
+  // Engagement
+  helpfulVotes Int @default(0)
+  totalVotes   Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, contentId])
+  @@index([contentId, isPublic])
+  @@index([userId])
+  @@map("content_reviews")
+}
+
+// Content relationships (similar content, sequels, etc.)
+model ContentRelation {
+  id              String  @id @default(cuid())
+  parentContentId String
+  parentContent   Content @relation("ParentContent", fields: [parentContentId], references: [id], onDelete: Cascade)
+
+  relatedContentId String
+  relatedContent   Content @relation("RelatedContent", fields: [relatedContentId], references: [id], onDelete: Cascade)
+
+  relationType ContentRelationType
+
+  createdAt DateTime @default(now())
+
+  @@unique([parentContentId, relatedContentId, relationType])
+  @@index([parentContentId])
+  @@index([relatedContentId])
+  @@map("content_relations")
+}
+
+// ============================================================================
+// TRUE CRIME CASES & KILLERS
+// ============================================================================
+
+// True Crime cases
+model TrueCrimeCase {
+  id String @id @default(cuid())
+
+  name             String
+  alternativeNames String[] // Different names for the case
+  description      String?
+
+  // Case details  
+  caseType CaseType
+  status   CaseStatus @default(UNSOLVED)
+
+  // Geographic information
+  location  String? // Primary location
+  locations String[] // All related locations
+  region    String? // State/country
+
+  // Timeline
+  startDate  DateTime? // When case/crimes started
+  endDate    DateTime? // When case/crimes ended  
+  solvedDate DateTime? // When case was solved (if applicable)
+
+  // People involved
+  victimCount  Int? // Number of victims
+  suspectCount Int? // Number of suspects
+
+  // Media and resources
+  imageUrl     String?
+  wikipediaUrl String?
+  officialUrl  String?
+
+  // SEO and search
+  slug           String   @unique
+  searchKeywords String[]
+
+  // Relationships
+  relatedContent CaseContent[] @relation("CaseContent")
+  relatedKillers CaseKiller[]  @relation("CaseKillers")
+
+  // Metadata
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([caseType])
+  @@index([status])
+  @@index([region])
+  @@index([slug])
+  @@map("true_crime_cases")
+}
+
+// Serial killers and criminals
+model SerialKiller {
+  id String @id @default(cuid())
+
+  name        String
+  aliases     String[] // Known aliases or nicknames
+  description String?
+  biography   String?
+
+  // Personal information
+  birthDate  DateTime?
+  deathDate  DateTime?
+  birthPlace String?
+
+  // Criminal activity
+  knownVictimCount     Int? // Confirmed victims
+  suspectedVictimCount Int? // Suspected victims
+  crimeTypes           String[] // Types of crimes committed
+  moduOperandi         String? // Method of operation
+
+  // Legal status
+  isAlive       Boolean?
+  inPrison      Boolean?
+  executionDate DateTime?
+
+  // Geographic activity
+  primaryLocation String? // Where most active
+  activeRegions   String[] // All regions of activity
+
+  // Timeline
+  crimeStartDate DateTime? // First known crime
+  crimeEndDate   DateTime? // Last known crime
+  captureDate    DateTime? // When captured
+
+  // Media
+  imageUrl String?
+
+  // SEO and search
+  slug           String   @unique
+  searchKeywords String[]
+
+  // Relationships
+  relatedContent KillerContent[] @relation("KillerContent")
+  relatedCases   CaseKiller[]    @relation("KillerCases")
+
+  // Metadata
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+  @@index([isAlive])
+  @@index([primaryLocation])
+  @@index([slug])
+  @@map("serial_killers")
+}
+
+// Junction table for content and cases
+model CaseContent {
+  id String @id @default(cuid())
+
+  caseId String
+  case   TrueCrimeCase @relation("CaseContent", fields: [caseId], references: [id], onDelete: Cascade)
+
+  contentId String
+  content   Content @relation("ContentCases", fields: [contentId], references: [id], onDelete: Cascade)
+
+  relevanceScore Float? // How relevant is content to the case (0.0-1.0)
+  isPrimary      Boolean @default(false) // Primary content for this case
+
+  createdAt DateTime @default(now())
+
+  @@unique([caseId, contentId])
+  @@index([caseId])
+  @@index([contentId])
+  @@map("case_content")
+}
+
+// Junction table for content and killers  
+model KillerContent {
+  id String @id @default(cuid())
+
+  killerId String
+  killer   SerialKiller @relation("KillerContent", fields: [killerId], references: [id], onDelete: Cascade)
+
+  contentId String
+  content   Content @relation("ContentKillers", fields: [contentId], references: [id], onDelete: Cascade)
+
+  relevanceScore Float? // How relevant is content to the killer (0.0-1.0)
+  isPrimary      Boolean @default(false) // Primary content for this killer
+
+  createdAt DateTime @default(now())
+
+  @@unique([killerId, contentId])
+  @@index([killerId])
+  @@index([contentId])
+  @@map("killer_content")
+}
+
+// Junction table for cases and killers
+model CaseKiller {
+  id String @id @default(cuid())
+
+  caseId String
+  case   TrueCrimeCase @relation("CaseKillers", fields: [caseId], references: [id], onDelete: Cascade)
+
+  killerId String
+  killer   SerialKiller @relation("KillerCases", fields: [killerId], references: [id], onDelete: Cascade)
+
+  role KillerRole @default(PRIMARY_SUSPECT) // Role in the case
+
+  createdAt DateTime @default(now())
+
+  @@unique([caseId, killerId])
+  @@index([caseId])
+  @@index([killerId])
+  @@map("case_killers")
+}
+
+model UserInterest {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  category    String // serial_killers, cold_cases, etc.
+  subcategory String? // specific cases or types
+  weight      Float   @default(1.0) // Interest strength
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, category, subcategory])
+  @@map("user_interests")
+}
+
+// ============================================================================
+// SOCIAL FEATURES (Basic structure for later expansion)
+// ============================================================================
+
+model UserFollow {
+  id          String @id @default(cuid())
+  followerId  String
+  followingId String
+
+  follower  User @relation("UserFollowers", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("UserFollowing", fields: [followingId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([followerId, followingId])
+  @@map("user_follows")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum PrivacyLevel {
+  PUBLIC
+  FRIENDS_ONLY
+  PRIVATE
+}
+
+enum Theme {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+enum ContentType {
+  DOCUMENTARY
+  DOCUSERIES
+  DRAMATIZATION
+  PODCAST
+  BOOK
+  MOVIE
+  TV_SERIES
+  SHORT_FILM
+  WEB_SERIES
+  SPECIAL
+}
+
+enum WatchStatus {
+  WANT_TO_WATCH
+  WATCHING
+  WATCHED
+  PAUSED
+  DROPPED
+  REWATCHING
+}
+
+enum CaseType {
+  SERIAL_KILLER
+  MASS_MURDER
+  MISSING_PERSON
+  COLD_CASE
+  SOLVED_MURDER
+  UNSOLVED_MURDER
+  FINANCIAL_CRIME
+  ORGANIZED_CRIME
+  CULT_CRIME
+  POLITICAL_ASSASSINATION
+  KIDNAPPING
+  TERRORISM
+  CYBER_CRIME
+  CORPORATE_CRIME
+  HISTORICAL_CRIME
+}
+
+enum CaseStatus {
+  ACTIVE
+  SOLVED
+  UNSOLVED
+  DISMISSED
+  DISPUTED
+  ONGOING_TRIAL
+  CONVICTED
+  ACQUITTED
+}
+
+enum FactualityLevel {
+  DOCUMENTARY // Purely factual content
+  DOCUDRAMA // Mostly factual with some dramatization
+  BASED_ON_TRUE_EVENTS // Heavily dramatized but based on real events
+  INSPIRED_BY // Loosely inspired by true events
+  FICTIONAL // Fictional content in true crime style
+}
+
+enum SensitivityLevel {
+  LOW // Minimal disturbing content
+  MODERATE // Some disturbing content with warnings
+  HIGH // Significant disturbing content
+  EXTREME // Highly disturbing content, viewer discretion advised
+}
+
+enum KillerRole {
+  PRIMARY_SUSPECT
+  SECONDARY_SUSPECT
+  CONVICTED_KILLER
+  ALLEGED_KILLER
+  ACCOMPLICE
+  WITNESS
+  VICTIM
+  INVESTIGATOR
+}
+
+enum PlatformType {
+  STREAMING
+  CABLE_TV
+  BROADCAST_TV
+  DIGITAL_PURCHASE
+  DIGITAL_RENTAL
+  SUBSCRIPTION_VOD
+  FREE_VOD
+  PODCAST_PLATFORM
+}
+
+enum AvailabilityType {
+  FREE
+  SUBSCRIPTION
+  PREMIUM_SUBSCRIPTION
+  PURCHASE
+  RENTAL
+  CABLE_SUBSCRIPTION
+}
+
+enum ContentRelationType {
+  SEQUEL
+  PREQUEL
+  SPIN_OFF
+  RELATED_CASE
+  SAME_CREATOR
+  SIMILAR_THEME
+  SAME_KILLER
+  SAME_LOCATION
+  SAME_TIME_PERIOD
+  FOLLOW_UP
+  PART_OF_SERIES
+}
+
+enum ImageType {
+  POSTER
+  BACKDROP
+  STILL
+  LOGO
+  THUMBNAIL
+  PROFILE
+}
+
+// ============================================================================
+// INDEXES
+// ============================================================================
+
+// User lookup indexes
+// @@index([email]) - already unique, so indexed
+// @@index([createdAt])
+// @@index([lastActivityAt])
+
+// Session management indexes
+// @@index([sessionToken]) - already unique, so indexed
+// @@index([userId, isActive])
+// @@index([expiresAt])
+
+// Content tracking indexes
+// @@index([userId, status])
+// @@index([contentId])
+// @@index([platform])

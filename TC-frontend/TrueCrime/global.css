@@ -1,0 +1,256 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Font faces for Inter font family */
+@font-face {
+  font-family: 'Inter';
+  src: url('./assets/fonts/Inter-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Inter-Light';
+  src: url('./assets/fonts/Inter-Light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Inter-Medium';
+  src: url('./assets/fonts/Inter-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Inter-SemiBold';
+  src: url('./assets/fonts/Inter-SemiBold.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Inter-Bold';
+  src: url('./assets/fonts/Inter-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+/* Root variables for consistent theming */
+:root {
+  --color-primary: #8B4B7F;
+  --color-primary-dark: #6B3760;
+  --color-primary-light: #A66B9E;
+  
+  --color-secondary: #4A4A5A;
+  --color-secondary-light: #6B6B7A;
+  
+  --color-background-light: #FFFFFF;
+  --color-background-dark: #1A1A1C;
+  
+  --color-surface-light: #F5F5F5;
+  --color-surface-dark: #2C2C30;
+  
+  --color-text-primary-light: #212121;
+  --color-text-primary-dark: #EAEAF4;
+  
+  --color-text-secondary-light: #757575;
+  --color-text-secondary-dark: #8A8A94;
+  
+  --border-radius-button: 8px;
+  --border-radius-card: 12px;
+  --border-radius-modal: 16px;
+  
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  
+  --font-family-primary: 'Inter', system-ui, -apple-system, sans-serif;
+  
+  --shadow-button: 0px 2px 4px rgba(139, 75, 127, 0.2);
+  --shadow-card: 0px 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-card-dark: 0px 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Dark theme override */
+.dark {
+  --color-background: var(--color-background-dark);
+  --color-surface: var(--color-surface-dark);
+  --color-text-primary: var(--color-text-primary-dark);
+  --color-text-secondary: var(--color-text-secondary-dark);
+  --shadow-card: var(--shadow-card-dark);
+}
+
+/* Base styles for consistent appearance */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-family-primary);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  background-color: var(--color-background);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-family-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Accessibility: Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Focus styles for better accessibility */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Custom scrollbar for web */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-text-secondary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-primary);
+}
+
+/* Selection styles */
+::selection {
+  background-color: var(--color-primary-light);
+  color: white;
+}
+
+::-moz-selection {
+  background-color: var(--color-primary-light);
+  color: white;
+}
+
+/* Component base styles */
+.btn {
+  @apply font-button transition-all duration-short ease-out focus-ring;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
+  user-select: none;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.input {
+  @apply font-body transition-colors duration-short ease-out focus-ring;
+  background: transparent;
+  border: 1px solid;
+  display: block;
+  width: 100%;
+}
+
+.input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.card {
+  @apply rounded-card;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+/* Utility classes */
+.text-gradient {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.bg-gradient-primary {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+}
+
+.bg-gradient-accent {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+}
+
+/* Platform-specific styles */
+@media (max-width: 768px) {
+  html {
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+  
+  .btn {
+    min-height: 48px; /* Minimum touch target for mobile */
+  }
+  
+  .input {
+    min-height: 48px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --color-text-primary-light: #000000;
+    --color-text-primary-dark: #FFFFFF;
+    --color-background-light: #FFFFFF;
+    --color-background-dark: #000000;
+  }
+  
+  .btn {
+    border: 2px solid currentColor;
+  }
+  
+  .input {
+    border-width: 2px;
+  }
+}
+
+/* Print styles */
+@media print {
+  * {
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+  }
+  
+  .btn,
+  .input {
+    border: 1px solid black !important;
+  }
+}
